@@ -23,6 +23,7 @@ def extract_packet_info(packet):
         protocol = ip_layer.proto # Protocol type
         print(f"  Protocol: {protocol}")
 
+        # Detect SYN packets
         if packet.haslayer(TCP):
             tcp_layer = packet.getlayer(TCP)
             src_port = tcp_layer.sport
@@ -41,6 +42,7 @@ def extract_packet_info(packet):
                 tcp_retransmissions[src_ip] += 1
                 print(f"  Retransmission detected from {src_ip}, Count: {tcp_retransmissions[src_ip]}")
 
+        # Detect UDP
         elif packet.haslayer(UDP):
             udp_layer = packet.getlayer(UDP)
             src_port = udp_layer.sport
