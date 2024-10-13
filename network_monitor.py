@@ -145,3 +145,151 @@ class NetworkMonitor:
         # Sniff packets on the interface
         print(f"Starting packet sniffing on interface: {self.interface}")
         scapy.sniff(iface=self.interface, prn=packet_callback, count=count, store=False, promisc=True)
+
+    def scan_ports(self, target_ip, ports, scan_type='tcp', os_detection=False, service_detection=False):
+        """
+        Scans specified ports on a target IP address using the specified scan type,
+        and performs OS and service version detection if requested.
+
+        :param target_ip: IP address to scan.
+        :param ports: A single port, a range (e.g., 20-25), or a comma-separated list of ports/ranges.
+        :param scan_type: Type of scan ('tcp', 'udp', 'syn').
+        :param os_detection: Whether to attempt OS detection.
+        :param service_detection: Whether to attempt service version detection.
+        """
+        open_ports = []
+
+        # Parse ports input
+        port_list = self._parse_ports(ports)
+
+        print(f"Scanning ports: {port_list} on {target_ip} using {scan_type.upper()} scan...")
+
+        for port in port_list:
+            if scan_type.lower() == 'tcp':
+                result = self._tcp_scan(target_ip, port)
+            elif scan_type.lower() == 'udp':
+                result = self._udp_scan(target_ip, port)
+            elif scan_type.lower() == 'syn':
+                result = self._syn_scan(target_ip, port)
+            else:
+                print(f"Unsupported scan type: {scan_type}")
+                return
+
+            if result:
+                open_ports.append(port)
+
+                if service_detection:
+                    service_info = self._detect_service(target_ip, port)
+                    print(f"Service on port {port}: {service_info}")
+
+        if os_detection:
+            os_info = self._detect_os(target_ip)
+            print(f"Detected OS: {os_info}")
+
+        return open_ports
+
+    def _parse_ports(self, ports):
+        """Parses the ports input and returns a list of individual ports."""
+        port_list = []
+        for item in ports.split(','):
+            if '-' in item:
+                start, end = map(int, item.split('-'))
+                port_list.extend(range(start, end + 1))
+            else:
+                port_list.append(int(item.strip()))
+        return port_list
+
+    def _tcp_scan(self, target_ip, port):
+        """Performs a TCP scan on a given port."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1)  # Set a timeout for the connection attempt
+            result = sock.connect_ex((target_ip, port))
+            return result == 0
+
+    def _udp_scan(self, target_ip, port):
+        """Performs a UDP scan on a given port."""
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.settimeout(1)
+            sock.sendto(b'', (target_ip, port))
+            try:
+                sock.recvfrom(1024)
+                return True  # Port is open if we receive a response
+            except socket.timeout:
+                return False  # Port is closed or filtered
+
+    def _syn_scan(self, target_ip, port):
+        """Performs a SYN scan on a given port using Scapy and the specified interface."""
+        # Create a SYN packet
+        syn_packet = scapy.IP(dst=target_ip) / scapy.TCP(dport=port, flags="S")
+        
+        # Send the SYN packet and wait for a response
+        response, _ = scapy.sr(syn_packet, iface=self.interface, verbose=False, timeout=1)
+
+        if response:
+            # Check the flags in the response
+            for packet in response:
+                if packet[1].haslayer(scapy.TCP):
+                    if packet[1][scapy.TCP].flags == 0x12:  # SYN-ACK
+                        # Send RST to close the connection
+                        scapy.sr(scapy.IP(dst=target_ip) / scapy.TCP(dport=port, flags="R"), iface=self.interface, verbose=False)
+                        return True
+                    elif packet[1][scapy.TCP].flags == 0x14:  # RST
+                        return False
+        return False
+
+
+    def _detect_service(self, target_ip, port):
+        """Attempts to detect the service running on the specified port."""
+        service_map = {
+            22: "SSH",
+            80: "HTTP",
+            443: "HTTPS",
+            21: "FTP",
+            25: "SMTP",
+            110: "POP3",
+            143: "IMAP",
+            3306: "MySQL",
+            5432: "PostgreSQL",
+            6379: "Redis"
+        }
+        
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1)
+                sock.connect((target_ip, port))
+                
+                if port in service_map:
+                    return service_map[port]
+
+                # Example for further service detection
+                if port == 21:  # FTP
+                    sock.sendall(b"USER anonymous\r\n")
+                    response = sock.recv(1024).decode()
+                    if "230" in response:  # Check for successful login
+                        return "FTP (Anonymous access)"
+                elif port == 80 or port == 443:  # HTTP/HTTPS
+                    sock.sendall(b"HEAD / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                    response = sock.recv(1024).decode()
+                    if "HTTP" in response:
+                        return "Web Service"
+                
+                return "Unknown service"
+        except Exception:
+            return "Service not detected"
+
+    def _detect_os(self, target_ip):
+        """Detects the operating system based on TTL values from ping responses."""
+        try:
+            response = scapy.sr1(scapy.IP(dst=target_ip)/scapy.ICMP(), verbose=False, timeout=1)
+            if response:
+                ttl = response.ttl
+                if ttl <= 64:
+                    return "Linux/Unix"
+                elif ttl <= 128:
+                    return "Windows"
+                elif ttl <= 255:
+                    return "More information required"
+            return "No response"
+        except Exception as e:
+            print(f"Error in OS detection: {e}")
+            return "OS detection failed"

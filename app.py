@@ -28,6 +28,15 @@ def main():
     parser_sniff.add_argument('--count', type=int, default=10, help="Number of packets to capture")
     parser_sniff.add_argument('--fields', type=str, nargs='*', help="Fields to display (e.g., src_ip, dst_ip)")
 
+    # Command for port scanning
+    parser_scan = subparsers.add_parser('scan', help='Scan specified ports on a target IP')
+    parser_scan.add_argument('target_ip', type=str, help='Target IP address to scan')
+    parser_scan.add_argument('ports', type=str, help='Single port, range (e.g., 20-25), or comma-separated list')
+    parser_scan.add_argument('--interface', required=False, type=str, help="Specify an interface")
+    parser_scan.add_argument('--type', choices=['tcp', 'udp', 'syn'], default='tcp', help='Specify scan type (tcp, udp, or syn)')
+    parser_scan.add_argument('--os-detection', action='store_true', help='Attempt to detect the operating system')
+    parser_scan.add_argument('--service-detection', action='store_true', help='Attempt to detect the service version')
+
     # Command for version
     parser_version = subparsers.add_parser('version', help='Show the app version')
 
@@ -41,10 +50,24 @@ def main():
         list_interfaces()
     elif args.command == 'sniff':
         sniff_packets(args.interface, args.filter_ip, args.filter_protocol, args.filter_ttl, args.filter_len, args.count, args.fields)
+    elif args.command == 'scan':
+        scan_ports(args.interface, args.target_ip, args.ports, args.type, args.os_detection, args.service_detection)
     elif args.command == 'version':
         show_version()
     else:
         parser.print_help()
+
+def scan_ports(interface, target_ip, ports, scan_type, os_detection, service_detection):
+    try:
+        monitor = NetworkMonitor(interface=interface)
+        open_ports = monitor.scan_ports(target_ip, ports, scan_type, os_detection, service_detection)
+        if open_ports:
+            print(f"Open ports on {target_ip}: {', '.join(map(str, open_ports))}")
+        else:
+            print(f"No open ports found on {target_ip}.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        exit(1)
 
 def sniff_packets(interface, filter_ip, filter_protocol, filter_ttl, filter_len, count, fields):
     monitor = NetworkMonitor(interface)
