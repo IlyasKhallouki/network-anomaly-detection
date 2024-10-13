@@ -64,14 +64,16 @@ class NetworkMonitor:
 
         return interface_info
     
-    def sniff_packets(self, filter_ip=None, count=10, fields=None):
+    def sniff_packets(self, filter_ip=None, count=10, fields=None, filter_protocol=None, filter_ttl=None, filter_len=None):
         """
-        Sniffs network packets on the specified interface, optionally filtered by an IP address,
-        and displays selected fields.
+        Sniffs network packets on the specified interface, filtered by IP, protocol, TTL, or length.
 
         :param filter_ip: IP address to filter packets (source or destination). If None, no filter is applied.
         :param count: Number of packets to capture. Default is 10.
         :param fields: List of fields to display (e.g., ['src_ip', 'dst_ip', 'protocol']). If None, all fields are shown.
+        :param filter_protocol: Protocol number to filter packets. If None, all protocols are captured.
+        :param filter_ttl: Filter packets by TTL. Supports > or < prefixes (e.g., '>50', '<120').
+        :param filter_len: Filter packets by length. Supports > or < prefixes (e.g., '>100', '<500').
         """
         # Default fields if none are specified
         default_fields = ['src_ip', 'dst_ip', 'protocol', 'ttl', 'len']
@@ -85,6 +87,18 @@ class NetworkMonitor:
                 print(f"Using default interface: {self.interface}")
             except Exception as e:
                 raise e
+
+        # Parse TTL and len filters (e.g., '>50', '<100')
+        def parse_filter_value(value):
+            if value.startswith('+'):
+                return '>', int(value[1:])
+            elif value.startswith('-'):
+                return '<', int(value[1:])
+            else:
+                return None, None
+
+        ttl_op, ttl_value = parse_filter_value(filter_ttl) if filter_ttl else (None, None)
+        len_op, len_value = parse_filter_value(filter_len) if filter_len else (None, None)
 
         # Packet callback function
         def packet_callback(packet):
@@ -103,9 +117,26 @@ class NetworkMonitor:
                     if filter_ip and (packet_info['src_ip'] != filter_ip and packet_info['dst_ip'] != filter_ip):
                         return
 
+                    # Apply protocol filtering if specified
+                    if filter_protocol and packet_info['protocol'] != filter_protocol:
+                        return
+
+                    # Apply TTL filtering if specified
+                    if ttl_op:
+                        if ttl_op == '>' and packet_info['ttl'] <= ttl_value:
+                            return
+                        elif ttl_op == '<' and packet_info['ttl'] >= ttl_value:
+                            return
+
+                    # Apply length filtering if specified
+                    if len_op:
+                        if len_op == '>' and packet_info['len'] <= len_value:
+                            return
+                        elif len_op == '<' and packet_info['len'] >= len_value:
+                            return
+
                     # Display only the fields specified by the user
                     display_info = {key: packet_info[key] for key in fields if key in packet_info}
-
                     print(display_info)
 
             except Exception as e:
