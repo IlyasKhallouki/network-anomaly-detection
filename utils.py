@@ -4,6 +4,7 @@ import struct
 import fcntl
 
 class Utils:
+    # TODO: Fix what interface is picked
     def _get_default_interface(self):
         """Automatically detect the active network interface."""
         addrs = psutil.net_if_addrs()
@@ -14,7 +15,7 @@ class Utils:
                 for addr in addr_list:
                     if addr.family == socket.AF_INET:  # Check for IPv4 addresses
                         return iface
-        raise Exception("interface 0")
+        raise Exception()
 
     def _get_ip_and_netmask(self, interface):
         """Gets the IP address and netmask of the interface."""
