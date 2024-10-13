@@ -113,4 +113,4 @@ class NetworkMonitor:
 
         # Sniff packets on the interface
         print(f"Starting packet sniffing on interface: {self.interface}")
-        scapy.sniff(iface=self.interface, prn=packet_callback, count=count, store=False)
+        scapy.sniff(iface=self.interface, prn=packet_callback, count=count, store=False, promisc=True)
