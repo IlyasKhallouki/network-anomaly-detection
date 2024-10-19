@@ -4,7 +4,7 @@ import time
 from utilities.logger import Logger
 
 class ArpSpoofingDetection:
-    def __init__(self, time_interval=60, threshold=2, verbose=False):
+    def __init__(self, time_interval=60, threshold=1, verbose=False):
         """
         Initialize ARP spoofing detection with configurable time interval and threshold.
         

@@ -3,7 +3,7 @@ import scapy.all as scapy
 from utilities.logger import Logger
 
 class DDoSDetection:
-    def __init__(self, packet_rate_threshold=100, connection_threshold=50, time_window=10, verbose=False):
+    def __init__(self, packet_rate_threshold=10, connection_threshold=5, time_window=5, verbose=False):
         """
         Initializes DDoS detection with customizable thresholds.
         
@@ -76,8 +76,8 @@ class DDoSDetection:
         """
         Raises an alert if DDoS attack is suspected.
         """
-        print('g')
         self.logger.log_alert("⚠️ DDoS attack suspected! Packet rate or connection threshold exceeded.")
+        time.sleep(2.5)
 
     def reset(self):
         """
