@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 
 # Load Data
 def load_data():
-    with open('./dataset/flowdata.pickle', 'rb') as file:
+    with open('../dataset/flowdata.pickle', 'rb') as file:
         x_train, y_train, x_test, y_test = pickle.load(file, encoding='bytes')
     return x_train, y_train, x_test, y_test
 
@@ -37,11 +37,11 @@ def train_model(x_train, y_train, x_test, y_test):
 
 # Save and Load Model
 def save_model(model, filename):
-    with open("models/"+filename, 'wb') as file:
+    with open(filename, 'wb') as file:
         pickle.dump(model, file)
 
 def load_model(filename):
-    with open("models/"+filename, 'rb') as file:
+    with open(filename, 'rb') as file:
         model = pickle.load(file)
     return model
 
