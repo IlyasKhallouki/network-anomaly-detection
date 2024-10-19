@@ -5,6 +5,9 @@ from detectors.ddos_detection import DDoSDetection
 from detectors.arp_spoofing_detection import ArpSpoofingDetection
 from detectors.icmp_flood_detection import IcmpFloodDetection
 from detectors.port_scanning_detector import PortScanningDetector
+from utilities.logger import Logger
+
+logger = Logger()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -43,8 +46,9 @@ def main():
 
     # Command for monitoring anomalies
     parser_monitor = subparsers.add_parser('monitor', help='Monitor network for specific anomalies like botnet, DDoS, etc.')
-    parser_monitor.add_argument('--anomaly', choices=['ddos', 'icmp_flood', 'port_scanning'], required=False, help="Specify the type of anomaly to monitor")
+    parser_monitor.add_argument('--anomaly', choices=['arp', 'ddos', 'icmp_flood', 'port_scanning'], required=False, help="Specify the type of anomaly to monitor")
     parser_monitor.add_argument('--interface', required=False, type=str, help="Specify an interface")
+    parser_monitor.add_argument('--verbose', required=False, type=bool, help="Print more info")
 
     # Command for version
     parser_version = subparsers.add_parser('version', help='Show the app version')
@@ -62,7 +66,7 @@ def main():
     elif args.command == 'scan':
         scan_ports(args.interface, args.target_ip, args.ports, args.type, args.os_detection, args.service_detection)
     elif args.command == 'monitor':
-        monitor_anomaly(args.anomaly, args.interface)
+        monitor_anomaly(args.anomaly, args.interface, args.verbose)
     elif args.command == 'version':
         show_version()
     else:
@@ -73,11 +77,11 @@ def scan_ports(interface, target_ip, ports, scan_type, os_detection, service_det
         monitor = NetworkMonitor(interface=interface)
         open_ports = monitor.scan_ports(target_ip, ports, scan_type, os_detection, service_detection)
         if open_ports:
-            print(f"Open ports on {target_ip}: {', '.join(map(str, open_ports))}")
+            logger.log_debug(f"Open ports on {target_ip}: {', '.join(map(str, open_ports))}")
         else:
-            print(f"No open ports found on {target_ip}.")
+            logger.log_debug(f"No open ports found on {target_ip}.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.log_exception(e)
         exit(1)
 
 def sniff_packets(interface, filter_ip, filter_protocol, filter_ttl, filter_len, count, fields):
@@ -91,7 +95,8 @@ def list_devices(interface):
         for device in devices:
             print(f"IP: {device['ip']}, MAC: {device['mac']}")
     except Exception as e:
-        print(f"Error: {e}")
+        logger.log_exception(e)
+        exit(1)
 
 def list_interfaces():
     try: 
@@ -108,18 +113,25 @@ def list_interfaces():
                 print(f"  MAC Address: {iface['mac_address']}")
             print("\n")
     except Exception as e:
-        print(f"Error: {e}")
+        logger.log_exception(e)
+        exit(1)
 
-def monitor_anomaly(anomaly, interface):
+def monitor_anomaly(anomaly, interface, verbose):
     detector = None
     if anomaly == 'ddos':
-        detector = DDoSDetection()
-    elif anomaly == 'arp_spoofing':
-        detector = ArpSpoofingDetection()
+        detector = DDoSDetection(verbose=verbose)
+    elif anomaly == 'arp':
+        detector = ArpSpoofingDetection(verbose=verbose)
     elif anomaly == 'icmp_flood':
-        detector = IcmpFloodDetection()
+        detector = IcmpFloodDetection(verbose=verbose)
     elif anomaly == 'port_scanning':
-        detector = PortScanningDetector()
+        detector = PortScanningDetector(verbose=verbose)
+    else:
+        try:
+            raise Exception("No valid mode was chosen")
+        except Exception as e:
+            logger.log_exception(e)
+            exit(1)
 
     detector.start_sniffing(interface=interface)
 
