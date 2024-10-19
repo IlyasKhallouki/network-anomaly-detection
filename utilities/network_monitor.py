@@ -141,7 +141,7 @@ class NetworkMonitor:
 
                     # Display only the fields specified by the user
                     display_info = {key: packet_info[key] for key in fields if key in packet_info}
-                    print(display_info)
+                    self.logger.log_info(display_info)
 
             except Exception as e:
                 self.logger.log_exception(e)
@@ -168,8 +168,6 @@ class NetworkMonitor:
 
         # Parse ports input
         port_list = self._parse_ports(ports)
-
-        self.logger.log_info(f"Scanning ports: {port_list} on {target_ip} using {scan_type.upper()} scan...")
 
         for port in port_list:
             if scan_type.lower() == 'tcp':

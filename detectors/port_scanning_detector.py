@@ -5,8 +5,7 @@ from utilities.logger import Logger
 
 
 class PortScanningDetector:
-    def __init__(self, interface, threshold=10, time_window=10, verbose=False):
-        self.interface = interface  # Network interface to listen on
+    def __init__(self, threshold=10, time_window=10, verbose=False):
         self.threshold = threshold  # Threshold for port scanning detection
         self.time_window = time_window  # Time window to count packets
         self.packet_count = defaultdict(int)  # Count of packets per source IP
@@ -56,6 +55,8 @@ class PortScanningDetector:
                     self.logger.log_debug(f"  SYN packet detected from {src_ip}, Count: {self.syn_packets[src_ip]}", print_message=self.verbose)
                     if self.syn_packets[src_ip] > 20:
                         self.logger.log_alert(f"Potential scan detected from {src_ip}")
+                        self.syn_packets[src_ip] = 0
+                        time.sleep(2.5)
 
                 # Detect retransmissions
                 elif flags == 'R':
@@ -69,7 +70,7 @@ class PortScanningDetector:
                 dst_port = udp_layer.dport
                 self.logger.log_debug(f"UDP packet detected from {src_ip}, Ports: {src_port} -> {dst_port}", print_message=self.verbose)
 
-    def start_sniffing(self):
+    def start_sniffing(self, interface="eth0"):
         """Sniff packets on the defined network interface."""
-        self.logger.log_info(f"Listening on {self.interface} in promiscuous mode...")
-        sniff(iface=self.interface, prn=self.extract_packet_info, promisc=True)
+        self.logger.log_info(f"Listening on {interface} in promiscuous mode...")
+        sniff(iface=interface, prn=self.extract_packet_info, promisc=True)

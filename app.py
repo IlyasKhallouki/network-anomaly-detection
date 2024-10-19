@@ -48,7 +48,7 @@ def main():
     parser_monitor = subparsers.add_parser('monitor', help='Monitor network for specific anomalies like botnet, DDoS, etc.')
     parser_monitor.add_argument('--anomaly', choices=['arp', 'ddos', 'icmp_flood', 'port_scanning'], required=False, help="Specify the type of anomaly to monitor")
     parser_monitor.add_argument('--interface', required=False, type=str, help="Specify an interface")
-    parser_monitor.add_argument('--verbose', required=False, type=bool, help="Print more info")
+    parser_monitor.add_argument('--verbose', required=False, action='store_true', help="Print more info")
 
     # Command for version
     parser_version = subparsers.add_parser('version', help='Show the app version')
@@ -93,7 +93,7 @@ def list_devices(interface):
         monitor = NetworkMonitor(interface)
         devices = monitor.list_connected_devices()
         for device in devices:
-            print(f"IP: {device['ip']}, MAC: {device['mac']}")
+            logger.log_info(f"IP: {device['ip']}, MAC: {device['mac']}")
     except Exception as e:
         logger.log_exception(e)
         exit(1)
@@ -103,14 +103,14 @@ def list_interfaces():
         monitor = NetworkMonitor()
         interfaces = monitor.list_all_interfaces()
         for iface in interfaces:
-            print(f"Interface: {iface['interface']}")
-            print(f"  Status: {'Up' if iface['is_up'] else 'Down'}")
+            logger.log_debug(f"Interface: {iface['interface']}")
+            logger.log_info(f"  Status: {'Up' if iface['is_up'] else 'Down'}")
             if iface['speed']:
-                print(f"  Speed: {iface['speed']} Mbps")
+                logger.log_info(f"  Speed: {iface['speed']} Mbps")
             if iface['ip_address']:
-                print(f"  IP Address: {iface['ip_address']}")
+                logger.log_info(f"  IP Address: {iface['ip_address']}")
             if iface['mac_address']:
-                print(f"  MAC Address: {iface['mac_address']}")
+                logger.log_info(f"  MAC Address: {iface['mac_address']}")
             print("\n")
     except Exception as e:
         logger.log_exception(e)
@@ -136,7 +136,7 @@ def monitor_anomaly(anomaly, interface, verbose):
     detector.start_sniffing(interface=interface)
 
 def show_version():
-    print("CLI App Version 0.2.0")
+    logger.log_info("CLI App Version 0.2.0")
 
 if __name__ == '__main__':
     main()
