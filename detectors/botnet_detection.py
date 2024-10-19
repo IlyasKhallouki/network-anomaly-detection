@@ -142,13 +142,3 @@ class BotnetDetection:
         is_botnet = self.detect_anomalies(features_np)
         if is_botnet:
             print("Botnet traffic detected in packet!")
-
-# Example usage:
-if __name__ == "__main__":
-    model_path = 'models'  # Path to the models folder
-
-    # Instantiate the BotnetDetection class
-    botnet_detector = BotnetDetection(model_path)
-
-    # Start live packet analysis (change 'eth0' to the appropriate network interface)
-    botnet_detector.live_packet_analysis(interface="wlp2s0", timeout=60)

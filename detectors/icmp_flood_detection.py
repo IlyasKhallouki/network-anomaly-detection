@@ -51,9 +51,3 @@ class IcmpFloodDetection:
         print(f"Listening for ICMP packets on interface {interface}...")
         sniff(iface=interface, prn=self.detect_flood, filter="icmp", store=False)
 
-if __name__ == "__main__":
-    # Initialize the ICMP Flood Detection
-    icmp_flood_detector = IcmpFloodDetection(threshold=100, time_interval=2)
-    
-    # Start sniffing on the given interface
-    icmp_flood_detector.start_sniffing(interface="wlp2s0")
