@@ -2,7 +2,7 @@ import scapy.all as scapy
 import ipaddress
 import psutil
 import socket
-from utils import Utils
+from utilities.utils import Utils
 
 class NetworkMonitor:
     def __init__(self, interface=None):

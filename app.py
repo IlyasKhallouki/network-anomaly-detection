@@ -1,6 +1,10 @@
 import argparse
 import sys
-from network_monitor import NetworkMonitor
+from utilities.network_monitor import NetworkMonitor
+from detectors.ddos_detection import DDoSDetection
+from detectors.arp_spoofing_detection import ArpSpoofingDetection
+from detectors.icmp_flood_detection import IcmpFloodDetection
+from detectors.port_scanning_detector import PortScanningDetector
 
 def main():
     parser = argparse.ArgumentParser(
@@ -37,6 +41,11 @@ def main():
     parser_scan.add_argument('--os-detection', action='store_true', help='Attempt to detect the operating system')
     parser_scan.add_argument('--service-detection', action='store_true', help='Attempt to detect the service version')
 
+    # Command for monitoring anomalies
+    parser_monitor = subparsers.add_parser('monitor', help='Monitor network for specific anomalies like botnet, DDoS, etc.')
+    parser_monitor.add_argument('--anomaly', choices=['ddos', 'icmp_flood', 'port_scanning'], required=False, help="Specify the type of anomaly to monitor")
+    parser_monitor.add_argument('--interface', required=False, type=str, help="Specify an interface")
+
     # Command for version
     parser_version = subparsers.add_parser('version', help='Show the app version')
 
@@ -52,6 +61,8 @@ def main():
         sniff_packets(args.interface, args.filter_ip, args.filter_protocol, args.filter_ttl, args.filter_len, args.count, args.fields)
     elif args.command == 'scan':
         scan_ports(args.interface, args.target_ip, args.ports, args.type, args.os_detection, args.service_detection)
+    elif args.command == 'monitor':
+        monitor_anomaly(args.anomaly, args.interface)
     elif args.command == 'version':
         show_version()
     else:
@@ -99,7 +110,19 @@ def list_interfaces():
     except Exception as e:
         print(f"Error: {e}")
 
-# Display the app version
+def monitor_anomaly(anomaly, interface):
+    detector = None
+    if anomaly == 'ddos':
+        detector = DDoSDetection()
+    elif anomaly == 'arp_spoofing':
+        detector = ArpSpoofingDetection()
+    elif anomaly == 'icmp_flood':
+        detector = IcmpFloodDetection()
+    elif anomaly == 'port_scanning':
+        detector = PortScanningDetector()
+
+    detector.start_sniffing(interface=interface)
+
 def show_version():
     print("CLI App Version 0.2.0")
 
