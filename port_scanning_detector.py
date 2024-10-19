@@ -31,8 +31,9 @@ class PortScanningDetector:
             time_elapsed = current_time - self.start_time
 
             if time_elapsed < self.time_window and self.packet_count[src_ip] > self.threshold:
-                print(f"Anomaly detected: {src_ip} has sent {self.packet_count[src_ip]} packets in the last {self.time_window} seconds")
-                # TODO: alert the user
+                pass
+                # TODO: send to logger
+                # print(f"Anomaly detected: {src_ip} has sent {self.packet_count[src_ip]} packets in the last {self.time_window} seconds")
 
             # Reset packet count every time window seconds
             if time_elapsed > self.time_window:
@@ -67,12 +68,5 @@ class PortScanningDetector:
 
     def start_sniffing(self):
         """Sniff packets on the defined network interface."""
-        # print(f"Listening on {self.interface} in promiscuous mode...")
+        print(f"Listening on {self.interface} in promiscuous mode...")
         sniff(iface=self.interface, prn=self.extract_packet_info, promisc=True)
-
-
-if __name__ == "__main__":
-    # Replace this with the correct interface name for your network
-    interface = "wlp2s0"  # Example: Use your actual interface name like "eth0" or "wlan0"
-    port_scanning_detector = PortScanningDetector(interface=interface)
-    port_scanning_detector.start_sniffing()
