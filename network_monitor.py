@@ -64,7 +64,7 @@ class NetworkMonitor:
 
         return interface_info
     
-    def sniff_packets(self, filter_ip=None, count=10, fields=None, filter_protocol=None, filter_ttl=None, filter_len=None):
+    def sniff_packets(self, filter_ip=None, count=10, fields=None, filter_protocol=None, filter_ttl=None, filter_len=None, callback=None):
         """
         Sniffs network packets on the specified interface, filtered by IP, protocol, TTL, or length.
 
@@ -141,10 +141,12 @@ class NetworkMonitor:
 
             except Exception as e:
                 print(f"Error processing packet: {e}")
+                
+        if callback == None: callback = packet_callback
 
         # Sniff packets on the interface
         print(f"Starting packet sniffing on interface: {self.interface}")
-        scapy.sniff(iface=self.interface, prn=packet_callback, count=count, store=False, promisc=True)
+        scapy.sniff(iface=self.interface, prn=callback, count=count, store=False, promisc=True)
 
     def scan_ports(self, target_ip, ports, scan_type='tcp', os_detection=False, service_detection=False):
         """
