@@ -1,9 +1,10 @@
 from collections import defaultdict
 import time
 from scapy.all import sniff, IP, ICMP
+from utilities.logger import Logger
 
 class IcmpFloodDetection:
-    def __init__(self, threshold=100, time_interval=10):
+    def __init__(self, threshold=100, time_interval=10, verbose=False):
         """
         Initialize the ICMP Flood Detection class.
 
@@ -15,6 +16,8 @@ class IcmpFloodDetection:
         self.packet_count = defaultdict(int)
         self.packet_sizes = defaultdict(list)
         self.start_time = time.time()
+        self.logger = Logger()
+        self.verbose = verbose
 
     def detect_flood(self, packet):
         """
@@ -33,9 +36,9 @@ class IcmpFloodDetection:
 
             # Detect ICMP flood based on packet count and threshold
             if current_time - self.start_time < self.time_interval and self.packet_count[src_ip] > self.threshold:
-                pass
                 # TODO: send to logger
-                # print(f"ICMP Flood detected from {src_ip}: {self.packet_count[src_ip]} ICMP packets in the last {self.time_interval} seconds")
+                self.logger.log_alert(f"ICMP Flood detected from {src_ip}: {self.packet_count[src_ip]} ICMP packets in the last {self.time_interval} seconds")
+                self.packet_count[src_ip] = 0
 
             # Reset the counter every ANOMALY_TIME_INTERVAL seconds
             if current_time - self.start_time > self.time_interval:
@@ -48,6 +51,6 @@ class IcmpFloodDetection:
 
         :param interface: The network interface to use for sniffing
         """
-        print(f"Listening for ICMP packets on interface {interface}...")
+        self.logger.log_info(f"Listening for ICMP packets on interface {interface}...")
         sniff(iface=interface, prn=self.detect_flood, filter="icmp", store=False)
 

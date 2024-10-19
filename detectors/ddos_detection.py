@@ -1,8 +1,9 @@
 import time
 import scapy.all as scapy
+from utilities.logger import Logger
 
 class DDoSDetection:
-    def __init__(self, packet_rate_threshold=100, connection_threshold=50, time_window=10):
+    def __init__(self, packet_rate_threshold=100, connection_threshold=50, time_window=10, verbose=False):
         """
         Initializes DDoS detection with customizable thresholds.
         
@@ -18,6 +19,8 @@ class DDoSDetection:
         self.packet_log = []  # Stores timestamps of packets
         self.connection_log = {}  # Stores connection counts by IP
         self.start_time = time.time()
+        self.logger = Logger()
+        self.verbose = verbose
 
     def detect_packet(self, packet):
         """
@@ -70,14 +73,19 @@ class DDoSDetection:
         Raises an alert if DDoS attack is suspected.
         """
         # TODO: send to logger
-        print("⚠️ DDoS attack suspected! Packet rate or connection threshold exceeded.")
+        self.logger.log_alert("⚠️ DDoS attack suspected! Packet rate or connection threshold exceeded.")
+        self.reset()
     
     def reset(self):
         """
-        Resets the packet and connection logs (useful after handling an alert).
+        Resets the packet and connection logs.
         """
         self.packet_log = []
         self.connection_log = {}
         self.packet_count = 0
         self.connection_count = 0
         self.start_time = time.time()
+
+    def start_sniffing(self, interface="eth0"):
+        self.logger.log_info(f"Listening for packets on interface {interface}...")
+        scapy.all.sniff(iface=interface, prn=self.detect_packet, store=False)

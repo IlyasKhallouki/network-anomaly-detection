@@ -1,9 +1,10 @@
 from scapy.all import sniff, ARP, get_if_addr, get_if_hwaddr
 from collections import defaultdict
 import time
+from utilities.logger import Logger
 
 class ArpSpoofingDetection:
-    def __init__(self, time_interval=60, threshold=2):
+    def __init__(self, time_interval=60, threshold=2, verbose=False):
         """
         Initialize ARP spoofing detection with configurable time interval and threshold.
         
@@ -11,6 +12,8 @@ class ArpSpoofingDetection:
         :param threshold: Number of ARP packets from different MAC addresses for the same IP
                           in the time window to trigger an alert.
         """
+        self.logger = Logger()
+        self.verbose = verbose
         self.time_interval = time_interval
         self.threshold = threshold
         self.arp_table = defaultdict(list)  # Store IP -> [list of MACs seen in time window]
@@ -24,6 +27,7 @@ class ArpSpoofingDetection:
 
             # TODO: send to logger
             # print(f"ARP Packet: {src_ip} -> {src_mac}")
+            self.logger.log_debug(message=f"ARP Packet: {src_ip} -> {src_mac}", print_message=self.verbose)
 
             # Record the MAC address for the IP
             current_time = time.time()
@@ -44,7 +48,7 @@ class ArpSpoofingDetection:
 
         if len(unique_macs) > self.threshold:
             # TODO: send to logger
-            pass
+            self.logger.log_alert(message=f"[ALERT] ARP Spoofing detected: {src_ip} has {len(unique_macs)} different MAC addresses in the last {self.time_interval} seconds!", print_message=self.verbose)
             # print(f"[ALERT] ARP Spoofing detected: {src_ip} has {len(unique_macs)} different MAC addresses in the last {self.time_interval} seconds!")
 
         # Clean up old records outside the time window
@@ -52,6 +56,6 @@ class ArpSpoofingDetection:
 
     def start_sniffing(self, interface="wlp2s0"):
         """Start sniffing for ARP packets on the specified interface."""
-        print(f"Listening for ARP spoofing activity on {interface}...")
+        self.logger.log_info(f"Listening for ARP spoofing activity on {interface}...")
         sniff(iface=interface, prn=self.packet_handler, store=0)
 

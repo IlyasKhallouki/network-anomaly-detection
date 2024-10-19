@@ -3,11 +3,14 @@ import ipaddress
 import psutil
 import socket
 from utilities.utils import Utils
+from utilities.logger import Logger
 
 class NetworkMonitor:
-    def __init__(self, interface=None):
+    def __init__(self, interface=None, verbose=False):
+        self.logger = Logger()
         self.interface = interface
         self.utils = Utils()
+        self.verbose = verbose
 
 
     def list_connected_devices(self):
@@ -16,7 +19,8 @@ class NetworkMonitor:
             try:
                 self.interface = self.utils._get_default_interface()
             except Exception as e:
-                print("An error has occured while trying to find an interface")
+                self.logger.log_error("An error has occured while trying to find an interface")
+                exit(1)
 
         """Lists all devices connected to the network."""
         ip_address, netmask = self.utils._get_ip_and_netmask(self.interface)
@@ -25,7 +29,7 @@ class NetworkMonitor:
         network = ipaddress.IPv4Network(f"{ip_address}/{netmask}", strict=False)
         network_range = str(network)
 
-        print(f"Scanning network range: {network_range}")
+        self.logger.log_info(f"Scanning network range: {network_range}")
         
         # Perform ARP scan over the network range
         arp_request = scapy.ARP(pdst=network_range)
@@ -84,7 +88,7 @@ class NetworkMonitor:
         if self.interface is None:
             try:
                 self.interface = self.utils._get_default_interface()
-                print(f"Using default interface: {self.interface}")
+                self.logger.log_info(f"Using default interface: {self.interface}")
             except Exception as e:
                 raise e
 
@@ -140,12 +144,13 @@ class NetworkMonitor:
                     print(display_info)
 
             except Exception as e:
-                print(f"Error processing packet: {e}")
+                self.logger.log_exception(e)
+                exit(1)
                 
         if callback == None: callback = packet_callback
 
         # Sniff packets on the interface
-        print(f"Starting packet sniffing on interface: {self.interface}")
+        self.logger.log_info(f"Starting packet sniffing on interface: {self.interface}")
         scapy.sniff(iface=self.interface, prn=callback, count=count, store=False, promisc=True)
 
     def scan_ports(self, target_ip, ports, scan_type='tcp', os_detection=False, service_detection=False):
@@ -164,7 +169,7 @@ class NetworkMonitor:
         # Parse ports input
         port_list = self._parse_ports(ports)
 
-        print(f"Scanning ports: {port_list} on {target_ip} using {scan_type.upper()} scan...")
+        self.logger.log_info(f"Scanning ports: {port_list} on {target_ip} using {scan_type.upper()} scan...")
 
         for port in port_list:
             if scan_type.lower() == 'tcp':
@@ -174,7 +179,7 @@ class NetworkMonitor:
             elif scan_type.lower() == 'syn':
                 result = self._syn_scan(target_ip, port)
             else:
-                print(f"Unsupported scan type: {scan_type}")
+                self.logger.log_error(f"Unsupported scan type: {scan_type}")
                 return
 
             if result:
@@ -182,11 +187,11 @@ class NetworkMonitor:
 
                 if service_detection:
                     service_info = self._detect_service(target_ip, port)
-                    print(f"Service on port {port}: {service_info}")
+                    self.logger.log_debug(f"Service on port {port}: {service_info}")
 
         if os_detection:
             os_info = self._detect_os(target_ip)
-            print(f"Detected OS: {os_info}")
+            self.logger.log_debug(f"Detected OS: {os_info}")
 
         return open_ports
 
@@ -293,5 +298,5 @@ class NetworkMonitor:
                     return "More information required"
             return "No response"
         except Exception as e:
-            print(f"Error in OS detection: {e}")
+            self.logger.log_error(f"Error in OS detection: {e}")
             return "OS detection failed"

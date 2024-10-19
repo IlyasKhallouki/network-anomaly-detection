@@ -1,10 +1,11 @@
 from scapy.all import sniff, IP, TCP, UDP
 from collections import defaultdict
 import time
+from utilities.logger import Logger
 
 
 class PortScanningDetector:
-    def __init__(self, interface, threshold=10, time_window=10):
+    def __init__(self, interface, threshold=10, time_window=10, verbose=False):
         self.interface = interface  # Network interface to listen on
         self.threshold = threshold  # Threshold for port scanning detection
         self.time_window = time_window  # Time window to count packets
@@ -13,6 +14,8 @@ class PortScanningDetector:
         self.syn_packets = defaultdict(int)  # Count of SYN packets per source IP
         self.tcp_retransmissions = defaultdict(int)  # Count of TCP retransmissions
         self.start_time = time.time()
+        self.logger = Logger()
+        self.verbose = verbose
 
     def extract_packet_info(self, packet):
         """Extract information from packets and detect anomalies."""
@@ -31,9 +34,9 @@ class PortScanningDetector:
             time_elapsed = current_time - self.start_time
 
             if time_elapsed < self.time_window and self.packet_count[src_ip] > self.threshold:
-                pass
                 # TODO: send to logger
-                # print(f"Anomaly detected: {src_ip} has sent {self.packet_count[src_ip]} packets in the last {self.time_window} seconds")
+                self.logger.log_warning(f"Anomaly detected: {src_ip} has sent {self.packet_count[src_ip]} packets in the last {self.time_window} seconds")
+                self.packet_count[src_ip] = 0
 
             # Reset packet count every time window seconds
             if time_elapsed > self.time_window:
@@ -50,23 +53,23 @@ class PortScanningDetector:
                 # Detect SYN packets
                 if flags == 'S':
                     self.syn_packets[src_ip] += 1
-                    # print(f"  SYN packet detected from {src_ip}, Count: {self.syn_packets[src_ip]}")
+                    self.logger.log_debug(f"  SYN packet detected from {src_ip}, Count: {self.syn_packets[src_ip]}", print_message=self.verbose)
                     if self.syn_packets[src_ip] > 20:
-                        print(f"  Potential scan detected from {src_ip}")
+                        self.logger.log_alert(f"Potential scan detected from {src_ip}")
 
                 # Detect retransmissions
                 elif flags == 'R':
                     self.tcp_retransmissions[src_ip] += 1
-                    # print(f"  Retransmission detected from {src_ip}, Count: {self.tcp_retransmissions[src_ip]}")
+                    self.logger.log_debug(f"Retransmission detected from {src_ip}, Count: {self.tcp_retransmissions[src_ip]}", print_message=self.verbose)
 
             # Detect UDP packets
             elif packet.haslayer(UDP):
                 udp_layer = packet.getlayer(UDP)
                 src_port = udp_layer.sport
                 dst_port = udp_layer.dport
-                # print(f"  UDP packet detected from {src_ip}, Ports: {src_port} -> {dst_port}")
+                self.logger.log_debug(f"UDP packet detected from {src_ip}, Ports: {src_port} -> {dst_port}", print_message=self.verbose)
 
     def start_sniffing(self):
         """Sniff packets on the defined network interface."""
-        print(f"Listening on {self.interface} in promiscuous mode...")
+        self.logger.log_info(f"Listening on {self.interface} in promiscuous mode...")
         sniff(iface=self.interface, prn=self.extract_packet_info, promisc=True)
